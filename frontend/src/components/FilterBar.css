@@ -1,0 +1,109 @@
+.filter-sidebar-content {
+  background: white;
+  border-radius: 4px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  position: sticky;
+  top: 1.5rem;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+}
+
+.filter-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #ddd;
+}
+
+.filter-section {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #ddd;
+}
+
+.filter-section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0.5rem;
+}
+
+.filter-section-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.6rem;
+  display: block;
+}
+
+.checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #333;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #667eea;
+  flex-shrink: 0;
+}
+
+.checkbox-label {
+  color: #555;
+  font-weight: 500;
+}
+
+.filter-count {
+  margin-left: 0.4rem;
+  font-size: 0.8rem;
+  color: #999;
+  font-weight: 400;
+}
+
+.checkbox-item:hover .checkbox-label {
+  color: #667eea;
+}
+
+.reset-btn {
+  width: 100%;
+  padding: 0.6rem;
+  background-color: #ff9900;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.reset-btn:hover {
+  background-color: #e68900;
+}
+
+@media (max-width: 768px) {
+  .filter-sidebar-content {
+    position: static;
+    max-height: none;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+  }
+
+  .filter-section {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+}

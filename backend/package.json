@@ -1,0 +1,19 @@
+{
+  "name": "ecommerce-search-backend",
+  "version": "1.0.0",
+  "description": "Ecommerce search API with Elasticsearch",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "@elastic/elasticsearch": "^8.13.0",
+    "@google/generative-ai": "^0.24.1",
+    "cors": "^2.8.5",
+    "csv-parser": "^3.0.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2"
+  }
+}
