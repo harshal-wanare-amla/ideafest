@@ -36,7 +36,7 @@ function HelpTooltip({ text, children, position = 'top' }) {
   }, [showTooltip, position]);
 
   return (
-    <div className="help-tooltip-wrapper">
+    <span className="help-tooltip-wrapper">
       <span 
         ref={iconRef}
         className="help-icon"
@@ -70,7 +70,7 @@ function HelpTooltip({ text, children, position = 'top' }) {
         </div>
       )}
       {children}
-    </div>
+    </span>
   );
 }
 

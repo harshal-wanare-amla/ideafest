@@ -2032,8 +2032,19 @@ app.get('/search', async (req, res) => {
     res.json(response);
   } catch (error) {
     console.error('Search error:', error);
+    
+    // Provide better error messages for common issues
+    let errorMessage = 'Search failed';
+    if (error.code === 'ECONNREFUSED' || error.message.includes('ECONNREFUSED')) {
+      errorMessage = 'Cannot connect to Elasticsearch. Make sure Elasticsearch is running on port 9200';
+    } else if (error.message.includes('401') || error.message.includes('unauthorized')) {
+      errorMessage = 'Elasticsearch authentication failed';
+    } else if (error.message.includes('not_found') || error.message.includes('404')) {
+      errorMessage = 'Elasticsearch index not found. Try seeding data first.';
+    }
+    
     res.status(500).json({
-      error: 'Search failed',
+      error: errorMessage,
       message: error.message,
       results: [],
       total: 0,

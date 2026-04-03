@@ -419,7 +419,7 @@ function SearchPage() {
     <div className="app">
       <header className="header">
         <div className="header-top">
-          <h1>Product Search</h1>
+          <h1>SearchSense</h1>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button 
               className="synonym-link"
