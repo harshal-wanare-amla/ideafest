@@ -1,11 +1,16 @@
 import ProductCard from './ProductCard';
 import './ProductGrid.css';
 
-function ProductGrid({ products }) {
+function ProductGrid({ products, onProductClick }) {
   return (
     <div className="product-grid">
-      {products.map((product) => (
-        <ProductCard key={product.id} product={product} />
+      {products.map((product, index) => (
+        <ProductCard 
+          key={product.id} 
+          product={product} 
+          onProductClick={onProductClick}
+          index={index}
+        />
       ))}
     </div>
   );

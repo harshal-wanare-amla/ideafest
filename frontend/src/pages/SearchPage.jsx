@@ -6,8 +6,7 @@ import FilterBar from '../components/FilterBar';
 import Pagination from '../components/Pagination';
 import '../App.css';
 
-// Simple cache implementation
-const searchCache = {};
+// Cache disabled for testing
 
 function SearchPage() {
   const navigate = useNavigate();
@@ -37,19 +36,70 @@ function SearchPage() {
     return `${query}|p${page}|s${sort}|min${minP}|max${maxP}|c${c}|cat${cat}|spec${specsString}|ai${aiState}`;
   }, []);
 
-  // Track search analytics
-  const trackSearch = useCallback((query) => {
-    fetch('/search/analytics', {
+  // Track search analytics with backend
+  const trackSearch = useCallback((query, resultsCount = 0, isZeroResult = false) => {
+    fetch('http://localhost:5001/track/search', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, timestamp: new Date().toISOString() }),
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache'
+      },
+      body: JSON.stringify({ 
+        query,
+        resultsCount,
+        isZeroResult,
+        engine: aiSearchEnabled ? 'ai-search' : 'traditional',
+        timestamp: new Date().toISOString(),
+      }),
     }).catch(() => {});
-  }, []);
+  }, [aiSearchEnabled]);
+
+  // Track product click
+  const trackClick = useCallback((productId, position) => {
+    if (!searchQuery) return;
+    fetch('http://localhost:5001/track/click', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache'
+      },
+      body: JSON.stringify({
+        query: searchQuery,
+        productId,
+        position,
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(() => {});
+  }, [searchQuery]);
+
+  // Track refinement (search again with changes)
+  const trackRefinement = useCallback((newQuery = null, filterChanges = null) => {
+    if (!searchQuery) return;
+    fetch('http://localhost:5001/track/refinement', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache'
+      },
+      body: JSON.stringify({
+        originalQuery: searchQuery,
+        newQuery: newQuery || searchQuery,
+        filterChanges,
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(() => {});
+  }, [searchQuery]);
 
   // Fetch search suggestions
   const fetchSuggestions = useCallback(async () => {
     try {
-      const response = await fetch('/search/trending');
+      const response = await fetch(`/search/trending?t=${Date.now()}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
       const data = await response.json();
       if (data.success && Array.isArray(data.trending)) {
         setSuggestions(data.trending.map(t => t.query));
@@ -96,9 +146,16 @@ function SearchPage() {
             .join('|');
         }
 
+        console.log('AI Search Payload:', JSON.stringify(aiSearchPayload, null, 2));
+
         const response = await fetch('/ai-search', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
           body: JSON.stringify(aiSearchPayload),
         });
 
@@ -149,7 +206,13 @@ function SearchPage() {
           }
         });
 
-        const response = await fetch(`/search?${params}`);
+        const response = await fetch(`/search?${params}&t=${Date.now()}`, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
 
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -171,12 +234,14 @@ function SearchPage() {
             });
           }
 
-          trackSearch(sanitizedQuery);
+          // Track search with results count and zero result status
+          trackSearch(sanitizedQuery, data.total, data.total === 0);
         } else {
           setProducts([]);
           setTotalPages(1);
           setFacets({ colors: [], categories: [], specifications: [] });
           setRecovery(null);
+          trackSearch(sanitizedQuery, 0, true);
         }
         
         setAiInterpretation('');
@@ -193,7 +258,7 @@ function SearchPage() {
     } finally {
       setLoading(false);
     }
-  }, [getCacheKey, trackSearch, aiSearchEnabled]);
+  }, [getCacheKey, trackSearch, aiSearchEnabled, enableRecovery]);
 
   const handleSearch = (query) => {
     setSearchQuery(query);
@@ -215,7 +280,30 @@ function SearchPage() {
     }
   };
 
+  const handleRecoveryToggle = (enabled) => {
+    setEnableRecovery(enabled);
+    // Trigger search immediately when recovery is toggled (checked or unchecked)
+    if (searchQuery.trim() && hasSearched && (products.length === 0 || recovery)) {
+      console.log('Recovery toggled to:', enabled, '- retrying search');
+      setCurrentPage(1);
+      // Use setTimeout to ensure state is updated before fetching
+      setTimeout(() => {
+        fetchProducts(searchQuery, 1, sortBy, minPrice, maxPrice, color, category, specifications);
+      }, 0);
+    }
+  };
+
   const handleFilterChange = (newMinPrice, newMaxPrice, newSort, newColor) => {
+    // Track refinement for filter changes
+    if (searchQuery.trim() && (newMinPrice !== minPrice || newMaxPrice !== maxPrice || newSort !== sortBy || newColor !== color)) {
+      trackRefinement(null, {
+        type: 'filter_change',
+        priceRange: `${newMinPrice || '0'}-${newMaxPrice || 'unlimited'}`,
+        sort: newSort,
+        color: newColor,
+      });
+    }
+    
     setMinPrice(newMinPrice);
     setMaxPrice(newMaxPrice);
     setSortBy(newSort);
@@ -227,6 +315,14 @@ function SearchPage() {
   };
 
   const handleCategoryChange = (newCategory) => {
+    // Track refinement for category change
+    if (searchQuery.trim() && newCategory !== category) {
+      trackRefinement(null, {
+        type: 'category_change',
+        category: newCategory,
+      });
+    }
+    
     setCategory(newCategory);
     setCurrentPage(1);
     if (searchQuery.trim()) {
@@ -248,6 +344,15 @@ function SearchPage() {
     if (newSpecs[specName].length === 0) {
       delete newSpecs[specName];
     }
+    
+    // Track refinement for spec changes
+    if (searchQuery.trim()) {
+      trackRefinement(null, {
+        type: 'specification_change',
+        specification: `${specName}:${specValue}`,
+      });
+    }
+    
     setSpecifications(newSpecs);
     setCurrentPage(1);
     if (searchQuery.trim()) {
@@ -279,13 +384,22 @@ function SearchPage() {
       <header className="header">
         <div className="header-top">
           <h1>Product Search</h1>
-          <button 
-            className="synonym-link"
-            onClick={() => navigate('/ai-synonyms')}
-            title="Manage product search synonyms with AI"
-          >
-            🧠 AI Synonyms
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button 
+              className="synonym-link"
+              onClick={() => navigate('/dashboard')}
+              title="View analytics dashboard"
+            >
+              📊 Dashboard
+            </button>
+            <button 
+              className="synonym-link"
+              onClick={() => navigate('/ai-synonyms')}
+              title="Manage product search synonyms with AI"
+            >
+              🧠 AI Synonyms
+            </button>
+          </div>
         </div>
         <p>Find what you're looking for</p>
       </header>
@@ -299,24 +413,28 @@ function SearchPage() {
           onAiSearchToggle={handleAiSearchToggle}
         />
 
-        {aiSearchEnabled && (
+        {aiSearchEnabled && hasSearched && (products.length === 0 || recovery) && (
           <div style={{
             padding: '12px 16px',
             marginBottom: '16px',
             marginTop: '8px',
             borderRadius: '6px',
-            backgroundColor: '#e7f3ff',
-            border: '1px solid #b3d9ff',
+            backgroundColor: recovery ? '#fff7e6' : '#e7f3ff',
+            border: recovery ? '1px solid #ffc53d' : '1px solid #b3d9ff',
             fontSize: '14px'
           }}>
             <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '8px' }}>
               <input 
                 type="checkbox" 
                 checked={enableRecovery}
-                onChange={(e) => setEnableRecovery(e.target.checked)}
+                onChange={(e) => handleRecoveryToggle(e.target.checked)}
                 style={{ width: '18px', height: '18px', cursor: 'pointer' }}
               />
-              <span>🔄 Enable Zero-Result Recovery (AI will try alternate searches)</span>
+              <span>
+                {recovery 
+                  ? `🔄 Recovery Active - Results shown with relaxed filters (${recovery.appliedRemovals?.join(', ') || 'filters adjusted'})` 
+                  : '🔄 Enable Zero-Result Recovery (AI will try alternate searches)'}
+              </span>
             </label>
           </div>
         )}
@@ -386,7 +504,7 @@ function SearchPage() {
                       </select>
                     </div>
                   </div>
-                  <ProductGrid products={products} />
+                  <ProductGrid products={products} onProductClick={trackClick} />
                   {totalPages > 1 && (
                     <Pagination 
                       currentPage={currentPage} 

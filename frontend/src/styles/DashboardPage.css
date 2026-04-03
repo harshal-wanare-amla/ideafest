@@ -1,0 +1,268 @@
+/* Dashboard Page Styles */
+
+.dashboard-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.dashboard-nav {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 12px;
+}
+
+.tab-button {
+  padding: 10px 18px;
+  background: transparent;
+  border: none;
+  font-size: 15px;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -15px;
+  padding-bottom: 12px;
+}
+
+.tab-button:hover {
+  color: #0066cc;
+  background: #f9f9f9;
+  border-bottom-color: #0066cc;
+}
+
+.tab-button.active {
+  color: #0066cc;
+  border-bottom-color: #0066cc;
+  font-weight: 600;
+}
+
+.dashboard-content {
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tab-pane {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+}
+
+.section-header {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.section-header h2 {
+  margin: 0 0 8px 0;
+  font-size: 24px;
+  color: #333;
+}
+
+.section-description {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+}
+
+/* Export Section */
+.export-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.export-card {
+  background: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  transition: all 0.2s ease;
+}
+
+.export-card:hover {
+  border-color: #0066cc;
+  box-shadow: 0 2px 8px rgba(0, 102, 204, 0.1);
+}
+
+.export-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.export-card p {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.export-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.export-button {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.export-button:hover {
+  border-color: #0066cc;
+  color: #0066cc;
+}
+
+.export-button.json {
+  background: #e7f3ff;
+  border-color: #b3d9ff;
+  color: #0066cc;
+}
+
+.export-button.json:hover {
+  background: #bae7ff;
+}
+
+.export-button.csv {
+  background: #f6f0ff;
+  border-color: #d9c9ff;
+  color: #0033cc;
+}
+
+.export-button.csv:hover {
+  background: #efdbff;
+}
+
+.api-code {
+  display: block;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 12px;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  margin-bottom: 8px;
+  overflow-x: auto;
+  line-height: 1.5;
+}
+
+/* Info Box */
+.info-box {
+  background: #e7f3ff;
+  border-left: 4px solid #0066cc;
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.info-box h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: #0066cc;
+}
+
+.info-box p {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.clear-cache-button {
+  padding: 10px 16px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.clear-cache-button:hover {
+  background: #0052a3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 102, 204, 0.2);
+}
+
+/* Header Buttons */
+.header-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.back-button,
+.nav-button {
+  padding: 8px 14px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.back-button:hover,
+.nav-button:hover {
+  border-color: #0066cc;
+  color: #0066cc;
+  background: #f9f9f9;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 12px;
+  }
+
+  .dashboard-nav {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .tab-button {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .tab-pane {
+    padding: 16px;
+  }
+
+  .export-section {
+    grid-template-columns: 1fr;
+  }
+
+  .export-buttons {
+    flex-direction: column;
+  }
+
+  .export-button {
+    width: 100%;
+  }
+
+  .header-buttons {
+    flex-wrap: wrap;
+  }
+}

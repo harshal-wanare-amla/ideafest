@@ -1,13 +1,20 @@
 import { useState } from 'react';
 import './ProductCard.css';
 
-function ProductCard({ product }) {
+function ProductCard({ product, onProductClick, index = 0 }) {
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
 
   const handleImageError = (e) => {
     setImageLoadFailed(true);
     e.target.src = 'https://via.placeholder.com/200x200?text=No+Image';
     e.target.style.opacity = '0.6';
+  };
+
+  const handleCardClick = () => {
+    // Track click with product ID and position
+    if (onProductClick) {
+      onProductClick(product.id, index + 1);
+    }
   };
 
   // Convert numeric rating to star display
@@ -20,7 +27,7 @@ function ProductCard({ product }) {
   };
 
   return (
-    <div className="product-card">
+    <div className="product-card" onClick={handleCardClick}>
       <div className="product-image-container">
         <img 
           src={product.image} 
