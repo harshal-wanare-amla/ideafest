@@ -26,7 +26,13 @@ function FilterBar({ minPrice, maxPrice, sortBy, color, category = '', specifica
     : {};
 
   const handlePriceRangeChange = (min, max) => {
-    onFilterChange(min.toString(), max.toString(), sortBy, color);
+    // If this range is already selected, uncheck it
+    if (minPrice === min.toString() && maxPrice === max.toString()) {
+      onFilterChange('', '', sortBy, color);
+    } else {
+      // Otherwise, select this range
+      onFilterChange(min.toString(), max.toString(), sortBy, color);
+    }
   };
 
   const handleColorChange = (selectedColor) => {

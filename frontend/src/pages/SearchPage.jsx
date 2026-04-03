@@ -24,6 +24,7 @@ function SearchPage() {
   const [specifications, setSpecifications] = useState({});
   const [suggestions, setSuggestions] = useState([]);
   const [facets, setFacets] = useState({ colors: [], categories: [], specifications: [] });
+  const [initialFacets, setInitialFacets] = useState({ colors: [], categories: [], specifications: [] });
   const [aiInterpretation, setAiInterpretation] = useState('');
   const [appliedFilters, setAppliedFilters] = useState(null);
   const [aiSearchEnabled, setAiSearchEnabled] = useState(false);
@@ -123,6 +124,9 @@ function SearchPage() {
 
     const sanitizedQuery = query.replace(/<[^>]*>/g, '');
     const aiSearchActive = aiSearchOverride !== null ? aiSearchOverride : aiSearchEnabled;
+    
+    // Check if any filters are active
+    const hasActiveFilters = minP || maxP || c || cat || Object.keys(specs).length > 0;
 
     setLoading(true);
     setHasSearched(true);
@@ -174,11 +178,16 @@ function SearchPage() {
           setRecovery(data.recovery || null);
 
           if (data.facets) {
-            setFacets({
+            const facetsObj = {
               colors: data.facets.colors || [],
               categories: data.facets.categories || [],
               specifications: data.facets.specifications || [],
-            });
+            };
+            setFacets(facetsObj);
+            // Store initial facets only when no filters are active
+            if (!hasActiveFilters) {
+              setInitialFacets(facetsObj);
+            }
           }
 
           trackSearch(sanitizedQuery);
@@ -227,11 +236,16 @@ function SearchPage() {
           setRecovery(data.recovery || null);
 
           if (data.facets) {
-            setFacets({
+            const facetsObj = {
               colors: data.facets.colors || [],
               categories: data.facets.categories || [],
               specifications: data.facets.specifications || [],
-            });
+            };
+            setFacets(facetsObj);
+            // Store initial facets only when no filters are active
+            if (!hasActiveFilters) {
+              setInitialFacets(facetsObj);
+            }
           }
 
           // Track search with results count and zero result status
@@ -482,6 +496,8 @@ function SearchPage() {
                 minPrice={minPrice}
                 maxPrice={maxPrice}
                 color={color}
+                category={category}
+                specifications={specifications}
               />
             </div>
             <div className="products-container">
