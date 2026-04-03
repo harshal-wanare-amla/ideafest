@@ -22,14 +22,14 @@
 
 .pagination-btn:hover:not(:disabled) {
   background: #f5f5f5;
-  border-color: #667eea;
-  color: #667eea;
+  border-color: #6366f1;
+  color: #6366f1;
 }
 
 .pagination-btn.active {
-  background: #667eea;
+  background: #6366f1;
   color: white;
-  border-color: #667eea;
+  border-color: #6366f1;
 }
 
 .pagination-btn:disabled {

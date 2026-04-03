@@ -19,7 +19,7 @@
   font-size: 2.5em;
   color: #1a1a2e;
   margin-bottom: 10px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -90,7 +90,7 @@
   background: white;
   padding: 15px;
   border-radius: 8px;
-  border-left: 4px solid #667eea;
+  border-left: 4px solid #6366f1;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -125,14 +125,14 @@
 }
 
 .tab:hover {
-  color: #667eea;
-  border-bottom-color: #667eea;
+  color: #6366f1;
+  border-bottom-color: #6366f1;
 }
 
 .tab.active {
-  color: #667eea;
-  border-bottom-color: #667eea;
-  background: rgba(102, 126, 234, 0.05);
+  color: #6366f1;
+  border-bottom-color: #6366f1;
+  background: rgba(99, 102, 241, 0.05);
 }
 
 /* Tab Content */
@@ -178,7 +178,7 @@
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   text-align: center;
-  border-top: 4px solid #667eea;
+  border-top: 4px solid #6366f1;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -194,7 +194,7 @@
 .metric-value {
   font-size: 2.5em;
   font-weight: bold;
-  color: #667eea;
+  color: #6366f1;
   margin-bottom: 10px;
 }
 
@@ -410,7 +410,7 @@
   padding: 15px;
   border-radius: 8px;
   background: #f8f9fa;
-  border-left: 4px solid #667eea;
+  border-left: 4px solid #6366f1;
   color: #333;
   font-weight: 500;
 }
@@ -512,10 +512,10 @@
 }
 
 .insight-item {
-  background: rgba(102, 126, 234, 0.05);
+  background: rgba(99, 102, 241, 0.05);
   padding: 15px;
   border-radius: 8px;
-  border-left: 4px solid #667eea;
+  border-left: 4px solid #6366f1;
 }
 
 .insight-item p {
@@ -564,7 +564,7 @@
 }
 
 .metric-mini .value {
-  color: #667eea;
+  color: #6366f1;
   font-weight: bold;
 }
 
@@ -580,7 +580,7 @@
   border-radius: 6px;
   color: #333;
   font-size: 0.95em;
-  border-left: 3px solid #667eea;
+  border-left: 3px solid #6366f1;
 }
 
 .pain-point {
@@ -635,7 +635,7 @@
   width: 40px;
   height: 40px;
   border: 4px solid #e0e7ff;
-  border-top-color: #667eea;
+  border-top-color: #6366f1;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -667,7 +667,7 @@
 .refresh-button {
   margin-top: 15px;
   padding: 10px 24px;
-  background: #667eea;
+  background: #6366f1;
   color: white;
   border: none;
   border-radius: 8px;
@@ -677,9 +677,9 @@
 }
 
 .refresh-button:hover {
-  background: #764ba2;
+  background: #8b5cf6;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
 /* Responsive */

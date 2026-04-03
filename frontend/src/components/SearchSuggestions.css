@@ -29,16 +29,16 @@
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 500;
-  color: #667eea;
+  color: #6366f1;
   transition: all 0.2s ease;
 }
 
 .suggestion-tag:hover {
-  background: #667eea;
+  background: #6366f1;
   color: white;
-  border-color: #667eea;
+  border-color: #6366f1;
   transform: translateY(-2px);
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
 }
 
 @media (max-width: 768px) {

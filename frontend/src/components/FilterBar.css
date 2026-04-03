@@ -57,7 +57,7 @@
   width: 16px;
   height: 16px;
   cursor: pointer;
-  accent-color: #667eea;
+  accent-color: #6366f1;
   flex-shrink: 0;
 }
 
@@ -74,7 +74,7 @@
 }
 
 .checkbox-item:hover .checkbox-label {
-  color: #667eea;
+  color: #6366f1;
 }
 
 .reset-btn {
