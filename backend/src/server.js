@@ -28,7 +28,7 @@ const PORT = process.env.PORT || 5000;
 const ES_NODE = process.env.ELASTICSEARCH_URL || 'http://localhost:9200';
 const SEED_DATA_FOLDER = process.env.SEED_DATA_FOLDER || 'data';
 const SEED_ID_FIELD = process.env.SEED_DATA_ID_FIELD || 'product_id';
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_KEYS = (process.env.GEMINI_API_KEY || '').split(',').filter(key => key.trim());
 const DEBUG = process.env.DEBUG === 'true';
 
 // Get root directory
@@ -42,14 +42,73 @@ const esClient = new Client({ node: ES_NODE });
 const ES_INDEX = process.env.ELASTICSEARCH_INDEX || 'products';
 const METADATA_INDEX = 'metadata_store';
 
-// Initialize Gemini client
-let genAI = null;
-if (GEMINI_API_KEY) {
-  genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  console.log('✓ Gemini API initialized');
+// ============================================
+// GEMINI API KEY ROTATION SYSTEM
+// ============================================
+let currentKeyIndex = 0;
+let geminiClients = [];
+
+if (GEMINI_API_KEYS.length > 0) {
+  geminiClients = GEMINI_API_KEYS.map(key => new GoogleGenerativeAI(key.trim()));
+  console.log(`✓ Gemini API initialized with ${geminiClients.length} key(s)`);
 } else {
   console.warn('⚠ GEMINI_API_KEY not configured - AI search disabled');
 }
+
+/**
+ * Get current Gemini client (with automatic rotation on quota errors)
+ */
+function getGeminiClient() {
+  if (geminiClients.length === 0) return null;
+  return geminiClients[currentKeyIndex];
+}
+
+/**
+ * Rotate to next API key on quota error
+ */
+function rotateGeminiKey() {
+  if (geminiClients.length <= 1) return false;
+  const previousKey = currentKeyIndex;
+  currentKeyIndex = (currentKeyIndex + 1) % geminiClients.length;
+  console.log(`🔄 Rotated Gemini API key: ${previousKey} → ${currentKeyIndex}`);
+  return true;
+}
+
+/**
+ * Make Gemini API call with automatic fallback to next key on quota error
+ */
+async function callGeminiWithRotation(apiCall) {
+  const maxRetries = geminiClients.length;
+  let lastError = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const genAI = getGeminiClient();
+      if (!genAI) {
+        throw new Error('No Gemini API keys configured');
+      }
+      return await apiCall(genAI);
+    } catch (error) {
+      lastError = error;
+      const errorMessage = error.message || '';
+      const isQuotaError = errorMessage.includes('quota') || 
+                          errorMessage.includes('RESOURCE_EXHAUSTED') ||
+                          errorMessage.includes('429');
+
+      if (isQuotaError && attempt < maxRetries - 1) {
+        console.warn(`⚠️ Key ${currentKeyIndex} quota exceeded, rotating...`);
+        rotateGeminiKey();
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError || new Error('All Gemini API keys exhausted');
+}
+
+// Initialize legacy genAI variable for backward compatibility
+const genAI = geminiClients.length > 0 ? getGeminiClient() : null;
 
 // ============================================
 // STRUCTURED LOGGING (CRITICAL for observability)
@@ -104,29 +163,59 @@ function checkGeminiRateLimit() {
 }
 
 /**
- * Call Gemini API with exponential backoff retry logic
+ * Call Gemini API with exponential backoff retry logic + key rotation
  * CRITICAL: Handles rate limiting (429 errors) gracefully
+ * Falls back to next API key on quota exhaustion
  */
 async function callGeminiWithRetry(prompt, maxRetries = 3) {
   checkGeminiRateLimit();
   
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
+  const totalAttempts = maxRetries * (geminiClients.length || 1);
+  let lastError = null;
+  
+  for (let attempt = 0; attempt < totalAttempts; attempt++) {
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      const clientIndex = Math.floor(attempt / maxRetries);
+      
+      // If we've exhausted current key, try next one
+      if (clientIndex > 0 && clientIndex < geminiClients.length) {
+        if (attempt % maxRetries === 0) {
+          rotateGeminiKey();
+          console.log(`🔄 Rotating to key ${currentKeyIndex} due to quota exhaustion`);
+        }
+      }
+      
+      const genAIClient = getGeminiClient();
+      if (!genAIClient) {
+        throw new Error('No Gemini API keys configured');
+      }
+      
+      const model = genAIClient.getGenerativeModel({ model: 'gemini-2.5-flash' });
       return await model.generateContent(prompt);
     } catch (error) {
-      const is429 = error?.message?.includes('429') || error?.status === 429;
-      const isRateLimited = error?.message?.includes('rate');
+      lastError = error;
       
-      if ((is429 || isRateLimited) && attempt < maxRetries - 1) {
+      const is429 = error?.message?.includes('429') || error?.status === 429;
+      const isRateLimited = error?.message?.includes('rate') || error?.message?.includes('quota') || error?.message?.includes('RESOURCE_EXHAUSTED');
+      
+      if ((is429 || isRateLimited) && attempt < totalAttempts - 1) {
         // Exponential backoff: 2s, 4s, 8s
-        const waitTime = 2000 * Math.pow(2, attempt);
+        const withinKeyAttempt = attempt % maxRetries;
+        const waitTime = 2000 * Math.pow(2, withinKeyAttempt);
+        
         StructuredLogger.warn('gemini_rate_limited', {
           attempt: attempt + 1,
-          max_retries: maxRetries,
+          total_attempts: totalAttempts,
+          key_index: currentKeyIndex,
           wait_ms: waitTime,
           error: error?.message,
         });
+        
+        // Check if we need to try next key
+        if (withinKeyAttempt === maxRetries - 1 && currentKeyIndex < geminiClients.length - 1) {
+          console.warn(`⚠️ Key ${currentKeyIndex} exhausted, will try next key...`);
+        }
+        
         await new Promise(r => setTimeout(r, waitTime));
         checkGeminiRateLimit();
         continue;
@@ -134,6 +223,8 @@ async function callGeminiWithRetry(prompt, maxRetries = 3) {
       throw error;
     }
   }
+  
+  throw lastError || new Error('All Gemini API keys exhausted');
 }
 
 // ============================================
@@ -363,9 +454,10 @@ function buildElasticsearchQuery({
             {
               multi_match: {
                 query: searchQuery,
-                fields: ['name^2', 'description'],
+                fields: ['name^3', 'description^1.5'],
                 type: 'best_fields',
-                operator: 'or'
+                operator: 'or',
+                minimum_should_match: '75%'
               },
             },
           ],
@@ -767,10 +859,20 @@ app.post('/seed', async (req, res) => {
                 custom_search_analyzer: {
                   type: 'custom',
                   tokenizer: 'standard',
-                  filter: ['lowercase', 'stop', 'porter_stem'],
+                  filter: [
+                    'lowercase',
+                    'stop',
+                    'porter_stem',
+                    'synonym_graph_filter',
+                  ],
                 },
               },
               filter: {
+                synonym_graph_filter: {
+                  type: 'synonym_graph',
+                  synonyms: [],
+                  lenient: true,
+                },
               },
             },
           },
@@ -1113,6 +1215,7 @@ app.post('/ai-search', async (req, res) => {
     const { 
       query: naturalLanguageQuery, 
       page = 1,
+      sort,
       minPrice,
       maxPrice,
       color,
@@ -1134,7 +1237,7 @@ app.post('/ai-search', async (req, res) => {
     }
 
     // Check if Gemini is configured
-    if (!genAI) {
+    if (geminiClients.length === 0) {
       return res.status(503).json({
         error: 'AI search not available',
         message: 'GEMINI_API_KEY not configured',
@@ -1431,7 +1534,40 @@ Now parse the user query following these rules EXACTLY.`;
 
     // Calculate pagination  
     const pageNum = Math.max(1, parseInt(page) || 1);
-    const pageSize = 20;
+    const pageSize = 40;
+
+    // Extract sort from manual parameter first, then fallback to AI-detected sort
+    let sortBy = [];
+    
+    // Check if manual sort was provided
+    if (sort && sort !== 'relevance') {
+      console.log('🔄 Manual sort detected:', sort);
+      
+      if (sort === 'price_asc') {
+        sortBy = [{ price: { order: 'asc' } }];
+      } else if (sort === 'price_desc') {
+        sortBy = [{ price: { order: 'desc' } }];
+      }
+      
+      console.log('🔄 Manual sorting applied:', sort);
+    } 
+    // If no manual sort, check Gemini AI response for sort hints
+    else if (parsedResponse?.sort?.field && parsedResponse?.sort?.order) {
+      const sortField = parsedResponse.sort.field.toLowerCase();
+      const sortOrder = parsedResponse.sort.order.toLowerCase();
+      
+      if (sortField === 'price') {
+        sortBy = [{ price: { order: sortOrder } }];
+      } else if (sortField === 'rating') {
+        sortBy = [{ rating: { order: sortOrder } }];
+      } else if (sortField === 'ratings_count') {
+        sortBy = [{ ratings_count: { order: sortOrder } }];
+      }
+      
+      if (sortBy.length > 0) {
+        console.log('🔄 AI Sorting applied:', sortField, sortOrder);
+      }
+    }
 
     // Build Elasticsearch query using SAME builder as /search endpoint
     // Convert specs_final format to specFilters format
@@ -1446,7 +1582,7 @@ Now parse the user query following these rules EXACTLY.`;
       searchQuery,
       pageNum,
       pageSize,
-      sortBy: [],
+      sortBy,
       minPrice: minPrice_final,
       maxPrice: maxPrice_final,
       color: color_final,
@@ -1485,7 +1621,7 @@ Now parse the user query following these rules EXACTLY.`;
         esClient,
         pageNum,
         pageSize,
-        sortBy: [],
+        sortBy,
       });
       
       // Convert facets from API format back to ES bucket format for processing
@@ -1623,7 +1759,7 @@ Now parse the user query following these rules EXACTLY.`;
       const sanitizedQuery = queryFromBody.trim().replace(/[<>]/g, '');
       
       const pageNum = Math.max(1, parseInt(pageFromBody) || 1);
-      const pageSize = 20;
+      const pageSize = 40;
       const from = (pageNum - 1) * pageSize;
 
       const esQuery = {
@@ -1788,7 +1924,7 @@ app.get('/search', async (req, res) => {
     
     // Calculate pagination
     const pageNum = Math.max(1, parseInt(page) || 1);
-    const pageSize = 20;
+    const pageSize =40;
 
     // Determine sort order
     let sortBy = [];
@@ -2021,7 +2157,7 @@ async function recoverFromZeroResults({
   filters,
   esClient,
   pageNum = 1,
-  pageSize = 20,
+  pageSize = 40,
   sortBy = [],
 }) {
   const recoveryAttempts = [];
@@ -2112,7 +2248,7 @@ async function recoverFromZeroResults({
   }
 
   // STEP 4: AI Query Rewrite (Gemini)
-  if (genAI) {
+  if (geminiClients.length > 0) {
     console.log('📌 Recovery Attempt 4: AI query rewrite');
     try {
       const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
@@ -2279,7 +2415,7 @@ app.get('/keywords', async (req, res) => {
     console.log(`🧠 AI-based keyword extraction from field: "${field}", size: ${size}`);
 
     // Check if Gemini is configured
-    if (!genAI) {
+    if (geminiClients.length === 0) {
       return res.status(503).json({
         error: 'AI service not available',
         message: 'GEMINI_API_KEY not configured',
@@ -2482,7 +2618,7 @@ app.post('/generate-synonyms', async (req, res) => {
       });
     }
 
-    if (!genAI) {
+    if (geminiClients.length === 0) {
       return res.status(503).json({
         error: 'AI service not available',
         message: 'GEMINI_API_KEY not configured',

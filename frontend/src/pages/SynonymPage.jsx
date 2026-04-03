@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Toast from '../components/Toast';
 import '../styles/SynonymPage.css';
 
 function SynonymPage() {
@@ -11,7 +12,7 @@ function SynonymPage() {
   const [synonyms, setSynonyms] = useState([]);
   const [editableSynonyms, setEditableSynonyms] = useState('');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [toast, setToast] = useState({ message: '', type: 'info' });
   const [step, setStep] = useState('keywords'); // keywords, generate, edit, apply
   const [useManualInput, setUseManualInput] = useState(false);
   const [selectedField, setSelectedField] = useState('name');
@@ -21,7 +22,12 @@ function SynonymPage() {
   const handleExtractKeywords = async () => {
     try {
       setLoading(true);
-      setMessage(`Extracting keywords from "${selectedField}" field...`);
+      const fieldDisplay = selectedField === 'name' ? 'Product Name' : selectedField;
+      
+      setToast({
+        message: `Extracting keywords from ${fieldDisplay}...`,
+        type: 'info'
+      });
 
       console.log(`🔍 Fetching keywords - Field: "${selectedField}", Size: ${selectedSize}`);
       const response = await fetch(`/keywords?field=${selectedField}&size=${selectedSize}`);
@@ -31,15 +37,23 @@ function SynonymPage() {
 
       if (data.success) {
         setKeywords(data.keywords);
-        setMessage(`✅ Extracted ${data.count} keywords from "${selectedField}"`);
+        setToast({
+          message: `✨ Extracted ${data.count} keywords from ${fieldDisplay}`,
+          type: 'success'
+        });
         console.log(`✅ Successfully extracted ${data.count} keywords`);
-        setTimeout(() => setMessage(''), 3000);
       } else {
-        setMessage(`❌ ${data.error}`);
+        setToast({
+          message: `Error: ${data.error}`,
+          type: 'error'
+        });
         console.error('❌ Error:', data.error);
       }
     } catch (error) {
-      setMessage(`❌ Error: ${error.message}`);
+      setToast({
+        message: `Error: ${error.message}`,
+        type: 'error'
+      });
       console.error('❌ Fetch error:', error);
     } finally {
       setLoading(false);
@@ -64,7 +78,10 @@ function SynonymPage() {
   const handleGenerateSynonyms = async () => {
     try {
       setLoading(true);
-      setMessage('Generating synonyms with AI...');
+      setToast({
+        message: 'Generating synonyms with AI...',
+        type: 'info'
+      });
 
       // Get keywords from manual input or extracted keywords
       const keywordsToUse = useManualInput
@@ -75,7 +92,10 @@ function SynonymPage() {
         : keywords;
 
       if (keywordsToUse.length === 0) {
-        setMessage('❌ Please enter or extract keywords first');
+        setToast({
+          message: 'Please enter or extract keywords first',
+          type: 'warning'
+        });
         setLoading(false);
         return;
       }
@@ -92,13 +112,21 @@ function SynonymPage() {
         setSynonyms(data.synonyms);
         setEditableSynonyms(data.synonyms.join('\n'));
         setStep('edit');
-        setMessage(`✅ Generated ${data.count} synonym rules`);
-        setTimeout(() => setMessage(''), 3000);
+        setToast({
+          message: `✨ Generated ${data.count} synonym rules`,
+          type: 'success'
+        });
       } else {
-        setMessage(`❌ ${data.error}: ${data.message}`);
+        setToast({
+          message: `${data.error}: ${data.message}`,
+          type: 'error'
+        });
       }
     } catch (error) {
-      setMessage(`❌ Error: ${error.message}`);
+      setToast({
+        message: `Error: ${error.message}`,
+        type: 'error'
+      });
     } finally {
       setLoading(false);
     }
@@ -108,7 +136,10 @@ function SynonymPage() {
   const handleUpdateSynonyms = async () => {
     try {
       setLoading(true);
-      setMessage('Updating Elasticsearch synonyms...');
+      setToast({
+        message: 'Updating Elasticsearch synonyms...',
+        type: 'info'
+      });
 
       // Parse edited synonyms
       const synonymLines = editableSynonyms
@@ -117,7 +148,10 @@ function SynonymPage() {
         .filter(line => line.length > 0);
 
       if (synonymLines.length === 0) {
-        setMessage('❌ No synonyms to apply');
+        setToast({
+          message: 'No synonyms to apply',
+          type: 'warning'
+        });
         setLoading(false);
         return;
       }
@@ -131,14 +165,22 @@ function SynonymPage() {
       const data = await response.json();
 
       if (data.success) {
-        setMessage(`✅ ${data.message}`);
+        setToast({
+          message: `✨ ${data.message}`,
+          type: 'success'
+        });
         setStep('apply');
-        setTimeout(() => setMessage(''), 5000);
       } else {
-        setMessage(`❌ ${data.error}: ${data.message}`);
+        setToast({
+          message: `${data.error}: ${data.message}`,
+          type: 'error'
+        });
       }
     } catch (error) {
-      setMessage(`❌ Error: ${error.message}`);
+      setToast({
+        message: `Error: ${error.message}`,
+        type: 'error'
+      });
     } finally {
       setLoading(false);
     }
@@ -378,7 +420,7 @@ function SynonymPage() {
             setEditableSynonyms('');
             setUseManualInput(false);
             setStep('keywords');
-            setMessage('');
+            setToast({ message: '', type: 'info' });
           }}
         >
           ➕ Create More Synonyms
@@ -389,6 +431,12 @@ function SynonymPage() {
 
   return (
     <div className="synonym-page">
+      <Toast 
+        message={toast.message} 
+        type={toast.type} 
+        onClose={() => setToast({ message: '', type: 'info' })} 
+      />
+      
       <header className="synonym-header">
         <div className="header-content">
           <button className="back-btn" onClick={() => navigate('/')}>
@@ -398,12 +446,6 @@ function SynonymPage() {
           <p>Create smarter product search with AI-powered synonyms</p>
         </div>
       </header>
-
-      {message && (
-        <div className={`message ${message.startsWith('✅') || message.startsWith('🎉') ? 'success' : 'error'}`}>
-          {message}
-        </div>
-      )}
 
       <div className="synonym-container">
         {step === 'keywords' && renderKeywordsSection()}

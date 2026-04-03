@@ -136,6 +136,7 @@ function SearchPage() {
         const aiSearchPayload = { 
           query: sanitizedQuery, 
           page,
+          sort,
           enableRecovery,
           ...(minP && { minPrice: parseFloat(minP) }),
           ...(maxP && { maxPrice: parseFloat(maxP) }),
