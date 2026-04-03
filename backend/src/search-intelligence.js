@@ -43,6 +43,14 @@ async function generateSearchIntelligence(analyticsData, genAI) {
     // Compile executive summary
     const executiveSummary = generateExecutiveSummary(reports, processedQueries);
 
+    // Group recommendations by priority for frontend
+    const groupedRecommendations = {
+      critical: aiInsights.recommendations.filter(r => r.priority === 'Critical' || r.priority === 'CRITICAL'),
+      high: aiInsights.recommendations.filter(r => r.priority === 'High' || r.priority === 'HIGH'),
+      medium: aiInsights.recommendations.filter(r => r.priority === 'Medium' || r.priority === 'MEDIUM'),
+      low: aiInsights.recommendations.filter(r => r.priority === 'Low' || r.priority === 'LOW'),
+    };
+
     // Build final intelligence report
     const finalReport = {
       timestamp: new Date().toISOString(),
@@ -57,8 +65,9 @@ async function generateSearchIntelligence(analyticsData, genAI) {
       // 3. Key Problems
       keyProblems: extractKeyProblems(reports, processedQueries),
 
-      // 4. Recommendations
+      // 4. Recommendations (grouped by priority for UI)
       recommendations: aiInsights.recommendations,
+      grouped: groupedRecommendations,
 
       // 5. Top 3 Priority Actions
       priorityActions: aiInsights.priorityActions.slice(0, 3),
@@ -262,7 +271,7 @@ function generateLostOpportunityReport(processedQueries) {
     .map(q => {
       const potentialClicks = Math.round(q.total_searches * 0.3); // If we improved to 30% CTR
       const lostClicks = potentialClicks - q.clicks;
-      const lostOpportunityCost = lostClicks * 150; // ~$150 per click
+      const lostOpportunityCost = lostClicks * 1000; // ~₹1000 per click (30% of ₹3333 avg product)
 
       return {
         query: q.query,
@@ -286,7 +295,7 @@ function generateLostOpportunityReport(processedQueries) {
     lostQueries,
     totalLostOpportunityCost: Math.round(totalLostOpportunity),
     totalLostClicks: lostQueries.reduce((sum, q) => sum + q.lostClicks, 0),
-    insight: `💸 Estimated $${Math.round(totalLostOpportunity).toLocaleString()} in lost opportunity from ${lostQueries.length} high-impact queries.`,
+    insight: `💸 Estimated ₹${Math.round(totalLostOpportunity).toLocaleString('en-IN')} in lost opportunity from ${lostQueries.length} high-impact queries.`,
     dashboardSection: {
       title: '💰 Missed Opportunities',
       topLosses: lostQueries.slice(0, 5).map(q => ({
@@ -294,10 +303,10 @@ function generateLostOpportunityReport(processedQueries) {
         searches: q.searches,
         currentCTR: `${q.currentCTR}%`,
         lostClicks: q.lostClicks,
-        opportunity: `$${q.estimatedOpportunityCost.toLocaleString()}`,
+        opportunity: `₹${q.estimatedOpportunityCost.toLocaleString('en-IN')}`,
         issue: q.problemType,
       })),
-      summary: `${lostQueries.length} queries losing $${Math.round(totalLostOpportunity).toLocaleString()} potential revenue`,
+      summary: `${lostQueries.length} queries losing ₹${Math.round(totalLostOpportunity).toLocaleString('en-IN')} potential revenue`,
     },
   };
 }
@@ -668,10 +677,10 @@ function generateExecutiveSummary(reports, processedQueries) {
 
   return [
     `🎯 Overall Search Performance: ${successRate}% success rate - ${successRate > 60 ? '✅ Good' : successRate > 40 ? '🟡 Moderate' : '🔴 Critical'}`,
-    `💸 Missed Revenue: ~$${lostOpportunity.toLocaleString()} in lost clicks from high-volume, low-engagement queries`,
+    `💸 Missed Revenue: ~₹${lostOpportunity.toLocaleString('en-IN')} in lost clicks from high-volume, low-engagement queries`,
     `📊 Ranking Quality: ${rankingIssues} queries with suboptimal rankings (users clicking position ${reports.rankingEffectivenessReport.rankingIssues[0]?.avgClickPosition || '?'} instead of top 3)`,
     `⚡ Quick Wins Available: ${quickWins} critical issues solvable within 1-2 hours`,
-    `📈 Opportunity: Implementing top 3 recommendations could improve CTR by ~20% and recover $${Math.round(lostOpportunity * 0.3).toLocaleString()} in potential revenue`,
+    `📈 Opportunity: Implementing top 3 recommendations could improve CTR by ~20% and recover ₹${Math.round(lostOpportunity * 0.3).toLocaleString('en-IN')} in potential revenue`,
   ];
 }
 
@@ -682,7 +691,7 @@ function generateMetricsSnapshot(reports, processedQueries) {
     avg_ctr: `${Math.round(processedQueries.reduce((sum, q) => sum + q.ctr, 0) / processedQueries.length)}%`,
     total_searches: reports.successRateReport.totalSearches,
     total_clicks: reports.successRateReport.totalClicks,
-    lost_opportunities: `$${reports.lostOpportunityReport.totalLostOpportunityCost.toLocaleString()}`,
+    lost_opportunities: `₹${reports.lostOpportunityReport.totalLostOpportunityCost.toLocaleString('en-IN')}`,
     ranking_issues: reports.rankingEffectivenessReport.rankingIssues.length,
     quick_wins: reports.quickWinsReport.highImpactWins,
     frustrated_queries: reports.frustrationSignalsReport.totalFrustratedQueries,
@@ -789,6 +798,12 @@ function generateEmptyIntelligenceReport() {
     },
     keyProblems: [],
     recommendations: [],
+    grouped: {
+      critical: [],
+      high: [],
+      medium: [],
+      low: [],
+    },
     priorityActions: [],
     dashboardSections: {
       searchHealth: { title: '🔍 Search Health', status: 'Collecting data...' },

@@ -37,58 +37,79 @@ function SearchPage() {
     return `${query}|p${page}|s${sort}|min${minP}|max${maxP}|c${c}|cat${cat}|spec${specsString}|ai${aiState}`;
   }, []);
 
-  // Track search analytics with backend
+  // Track search analytics with backend (silent fail if unavailable)
   const trackSearch = useCallback((query, resultsCount = 0, isZeroResult = false) => {
-    fetch('http://localhost:5001/track/search', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache'
-      },
-      body: JSON.stringify({ 
-        query,
-        resultsCount,
-        isZeroResult,
-        engine: aiSearchEnabled ? 'ai-search' : 'traditional',
-        timestamp: new Date().toISOString(),
-      }),
-    }).catch(() => {});
+    try {
+      Promise.race([
+        fetch('http://localhost:5000/track/search', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache'
+          },
+          body: JSON.stringify({ 
+            query,
+            resultsCount,
+            isZeroResult,
+            engine: aiSearchEnabled ? 'ai-search' : 'traditional',
+            timestamp: new Date().toISOString(),
+          }),
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1000))
+      ]).catch(() => {});
+    } catch (e) {
+      // Silently ignore tracking errors
+    }
   }, [aiSearchEnabled]);
 
-  // Track product click
+  // Track product click (silent fail if unavailable)
   const trackClick = useCallback((productId, position) => {
     if (!searchQuery) return;
-    fetch('http://localhost:5001/track/click', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache'
-      },
-      body: JSON.stringify({
-        query: searchQuery,
-        productId,
-        position,
-        timestamp: new Date().toISOString(),
-      }),
-    }).catch(() => {});
+    try {
+      Promise.race([
+        fetch('http://localhost:5000/track/click', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache'
+          },
+          body: JSON.stringify({
+            query: searchQuery,
+            productId,
+            position,
+            timestamp: new Date().toISOString(),
+          }),
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1000))
+      ]).catch(() => {});
+    } catch (e) {
+      // Silently ignore tracking errors
+    }
   }, [searchQuery]);
 
-  // Track refinement (search again with changes)
+  // Track refinement (search again with changes) (silent fail if unavailable)
   const trackRefinement = useCallback((newQuery = null, filterChanges = null) => {
     if (!searchQuery) return;
-    fetch('http://localhost:5001/track/refinement', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache'
-      },
-      body: JSON.stringify({
-        originalQuery: searchQuery,
-        newQuery: newQuery || searchQuery,
-        filterChanges,
-        timestamp: new Date().toISOString(),
-      }),
-    }).catch(() => {});
+    try {
+      Promise.race([
+        fetch('http://localhost:5000/track/refinement', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache'
+          },
+          body: JSON.stringify({
+            originalQuery: searchQuery,
+            newQuery: newQuery || searchQuery,
+            filterChanges,
+            timestamp: new Date().toISOString(),
+          }),
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1000))
+      ]).catch(() => {});
+    } catch (e) {
+      // Silently ignore tracking errors
+    }
   }, [searchQuery]);
 
   // Fetch search suggestions
@@ -518,6 +539,8 @@ function SearchPage() {
                         <option value="relevance">Relevance</option>
                         <option value="price_asc">Price: Low to High</option>
                         <option value="price_desc">Price: High to Low</option>
+                        <option value="rating_desc">Top Rated</option>
+                        <option value="ratings_count_desc">Top Reviewed</option>
                       </select>
                     </div>
                   </div>

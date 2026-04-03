@@ -18,6 +18,17 @@ function SynonymPage() {
   const [selectedField, setSelectedField] = useState('name');
   const [selectedSize, setSelectedSize] = useState(20);
 
+  // Read URL parameters on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const searchTerm = params.get('term');
+    if (searchTerm) {
+      setManualKeywords(searchTerm);
+      setUseManualInput(true);
+      setStep('generate');
+    }
+  }, []);
+
   // Extract keywords from Elasticsearch
   const handleExtractKeywords = async () => {
     try {

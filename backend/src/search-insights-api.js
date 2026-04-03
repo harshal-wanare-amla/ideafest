@@ -223,19 +223,46 @@ export class SearchInsightsService {
    */
   generateQuickStats(analyticsData, triggeredRules, recommendations) {
     const totalSearches = analyticsData.reduce((sum, q) => sum + (q.total_searches || 0), 0);
-    const avgCtr = (analyticsData.reduce((sum, q) => sum + (q.ctr || 0), 0) / analyticsData.length * 100).toFixed(1);
+    const totalImpressions = totalSearches; // Each search = 1 impression
+    const totalClicks = analyticsData.reduce((sum, q) => sum + (q.clicks || 0), 0);
+    const avgCtr = totalSearches > 0 ? ((totalClicks / totalSearches) * 100).toFixed(1) : '0';
+
+    // Zero-result search terms analysis
+    const zeroResultTerms = analyticsData
+      .filter(q => q.zero_result_count > 0)
+      .map(q => ({
+        query: q.query,
+        zero_results: q.zero_result_count,
+        total_searches: q.total_searches,
+        zero_rate: ((q.zero_result_count / q.total_searches) * 100).toFixed(1),
+        impact: q.zero_result_count * 1000 * 0.3, // Potential lost revenue
+      }))
+      .sort((a, b) => b.zero_results - a.zero_results)
+      .slice(0, 10); // Top 10 zero-result terms
 
     // Calculate lost revenue from zero-result queries
-    const zeroResultSearches = triggeredRules
-      .filter(t => t.rule_id.includes('zero_result'))
-      .reduce((sum, t) => sum + (t.query_stats?.total_searches || 0), 0);
-    const lostRevenue = Math.round(zeroResultSearches * 150 * 0.3); // 30% conversion * $150 avg
+    const zeroResultSearches = zeroResultTerms.reduce((sum, t) => sum + t.zero_results, 0);
+    const lostRevenue = Math.round(zeroResultSearches * 1000 * 0.3); // 30% conversion * ₹1000 avg
 
     return {
       summary: {
         total_searches_analyzed: totalSearches,
+        total_impressions: totalImpressions,
+        total_clicks: totalClicks,
         average_ctr: avgCtr + '%',
         queries_analyzed: analyticsData.length,
+      },
+      engagement: {
+        impressions: totalImpressions,
+        clicks: totalClicks,
+        ctr_percentage: avgCtr,
+        avg_clicks_per_search: (totalClicks / (totalSearches || 1)).toFixed(3),
+      },
+      zero_result_terms: {
+        total_zero_result_searches: zeroResultSearches,
+        zero_result_terms_count: zeroResultTerms.length,
+        top_zero_result_terms: zeroResultTerms,
+        estimated_lost_revenue: '₹' + lostRevenue.toLocaleString('en-IN'),
       },
       issues: {
         total_issues_found: triggeredRules.length,
@@ -243,9 +270,9 @@ export class SearchInsightsService {
         high_priority_issues: triggeredRules.filter(t => t.priority === 'HIGH').length,
       },
       revenue_impact: {
-        lost_revenue_potential: '$' + lostRevenue.toLocaleString(),
+        lost_revenue_potential: '₹' + lostRevenue.toLocaleString('en-IN'),
         searches_at_risk: zeroResultSearches,
-        recovery_potential: '$' + Math.round(lostRevenue * 0.5).toLocaleString() + ' (50% recovery)',
+        recovery_potential: '₹' + Math.round(lostRevenue * 0.5).toLocaleString('en-IN') + ' (50% recovery)',
       },
       actions_recommended: {
         total: recommendations.length,
@@ -309,7 +336,7 @@ function getMockQuickStats() {
       high_priority_issues: 3
     },
     revenue_impact: {
-      lost_revenue_potential: '$45,600',
+      lost_revenue_potential: '₹45,600',
       searches_at_risk: 34
     },
     actions_recommended: {
@@ -327,7 +354,7 @@ function getMockDashboard() {
       avg_ctr: '32%',
       overall_success_rate: '94%',
       total_issues_found: 8,
-      lost_revenue: '$45,600'
+      lost_revenue: '₹45,600'
     },
     grouped: {
       critical: [

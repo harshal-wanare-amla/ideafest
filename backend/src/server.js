@@ -1539,20 +1539,8 @@ Now parse the user query following these rules EXACTLY.`;
     // Extract sort from manual parameter first, then fallback to AI-detected sort
     let sortBy = [];
     
-    // Check if manual sort was provided
-    if (sort && sort !== 'relevance') {
-      console.log('🔄 Manual sort detected:', sort);
-      
-      if (sort === 'price_asc') {
-        sortBy = [{ price: { order: 'asc' } }];
-      } else if (sort === 'price_desc') {
-        sortBy = [{ price: { order: 'desc' } }];
-      }
-      
-      console.log('🔄 Manual sorting applied:', sort);
-    } 
-    // If no manual sort, check Gemini AI response for sort hints
-    else if (parsedResponse?.sort?.field && parsedResponse?.sort?.order) {
+    // Priority 1: If Gemini AI detected a sort intent in the natural language query, use that
+    if (parsedResponse?.sort?.field && parsedResponse?.sort?.order) {
       const sortField = parsedResponse.sort.field.toLowerCase();
       const sortOrder = parsedResponse.sort.order.toLowerCase();
       
@@ -1565,7 +1553,25 @@ Now parse the user query following these rules EXACTLY.`;
       }
       
       if (sortBy.length > 0) {
-        console.log('🔄 AI Sorting applied:', sortField, sortOrder);
+        console.log('🎯 AI-DETECTED SORT (HIGH PRIORITY):', sortField, sortOrder);
+      }
+    } 
+    // Priority 2: If no AI sort detected, use manual sort from dropdown
+    else if (sort && sort !== 'relevance') {
+      console.log('🔄 Manual sort (fallback):', sort);
+      
+      if (sort === 'price_asc') {
+        sortBy = [{ price: { order: 'asc' } }];
+      } else if (sort === 'price_desc') {
+        sortBy = [{ price: { order: 'desc' } }];
+      } else if (sort === 'rating_desc') {
+        sortBy = [{ rating: { order: 'desc' } }];
+      } else if (sort === 'ratings_count_desc') {
+        sortBy = [{ ratings_count: { order: 'desc' } }];
+      }
+      
+      if (sortBy.length > 0) {
+        console.log('🔄 Manual sorting applied:', sort);
       }
     }
 
@@ -1932,6 +1938,10 @@ app.get('/search', async (req, res) => {
       sortBy = [{ price: { order: 'asc' } }];
     } else if (sort === 'price_desc') {
       sortBy = [{ price: { order: 'desc' } }];
+    } else if (sort === 'rating_desc') {
+      sortBy = [{ rating: { order: 'desc' } }];
+    } else if (sort === 'ratings_count_desc') {
+      sortBy = [{ ratings_count: { order: 'desc' } }];
     }
     // 'relevance' is default (no explicit sort needed for _score)
 
