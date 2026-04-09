@@ -136,7 +136,7 @@ function SearchPage() {
   }, [fetchSuggestions]);
 
   // Fetch products from backend
-  const fetchProducts = useCallback(async (query, page = 1, sort = 'relevance', minP = '', maxP = '', c = '', cat = '', specs = {}, aiSearchOverride = null) => {
+  const fetchProducts = useCallback(async (query, page = 1, sort = 'relevance', minP = '', maxP = '', c = '', cat = '', specs = {}, aiSearchOverride = null, enableRecoveryOverride = null) => {
     if (!query.trim()) {
       setProducts([]);
       setHasSearched(false);
@@ -145,6 +145,7 @@ function SearchPage() {
 
     const sanitizedQuery = query.replace(/<[^>]*>/g, '');
     const aiSearchActive = aiSearchOverride !== null ? aiSearchOverride : aiSearchEnabled;
+    const enableRecoveryActive = enableRecoveryOverride !== null ? enableRecoveryOverride : enableRecovery;
     
     // Check if any filters are active
     const hasActiveFilters = minP || maxP || c || cat || Object.keys(specs).length > 0;
@@ -158,7 +159,7 @@ function SearchPage() {
           query: sanitizedQuery, 
           page,
           sort,
-          enableRecovery,
+          enableRecovery: enableRecoveryActive,
           ...(minP && { minPrice: parseFloat(minP) }),
           ...(maxP && { maxPrice: parseFloat(maxP) }),
           ...(c && { color: c }),
@@ -319,14 +320,10 @@ function SearchPage() {
   const handleRecoveryToggle = (enabled) => {
     setEnableRecovery(enabled);
     // Trigger search immediately when recovery is toggled (checked or unchecked)
-    if (searchQuery.trim() && hasSearched && (products.length === 0 || recovery)) {
-      console.log('Recovery toggled to:', enabled, '- retrying search');
-      setCurrentPage(1);
-      // Use setTimeout to ensure state is updated before fetching
-      setTimeout(() => {
-        fetchProducts(searchQuery, 1, sortBy, minPrice, maxPrice, color, category, specifications);
-      }, 0);
-    }
+    console.log('Recovery toggled to:', enabled, '- retrying search');
+    setCurrentPage(1);
+    // Pass the new enabled state directly to avoid timing issues with state updates
+    fetchProducts(searchQuery, 1, sortBy, minPrice, maxPrice, color, category, specifications, null, enabled);
   };
 
   const handleFilterChange = (newMinPrice, newMaxPrice, newSort, newColor) => {
