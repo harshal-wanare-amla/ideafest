@@ -455,9 +455,9 @@ function buildElasticsearchQuery({
               multi_match: {
                 query: searchQuery,
                 fields: ['name^3', 'description^1.5'],
-                type: 'best_fields',
-                operator: 'or',
-                minimum_should_match: '75%'
+                type: 'cross_fields',
+                operator: 'or'
+               
               },
             },
           ],
@@ -1331,9 +1331,32 @@ backpacks, handbags, shoes, clothing, watches, headphones, jeans, accessories, s
 
 -----------------------------------
 RULE 3 - PRICE HANDLING:
-- "under 2000", "below 2000", "less than 2000" → max_price = 2000
-- "above 2000", "more than 2000" → min_price = 2000
-- "between 2000 to 3000", "2000-3000" → min_price = 2000, max_price = 3000
+NUMERIC FORMATS (BOTH WORK IDENTICALLY):
+- "under 2000" OR "under 2k" → max_price = 2000
+- "below 3000" OR "below 3k" → max_price = 3000
+- "above 5000" OR "above 5k" → min_price = 5000
+- "more than 7500" OR "more than 7.5k" → min_price = 7500
+- "between 2000 to 3000" OR "between 2k to 3k" → min_price = 2000, max_price = 3000
+- "between 2000 and 3000" OR "between 2k and 3k" → min_price = 2000, max_price = 3000 (BOTH "to" AND "and" WORK)
+- "2000-3000" OR "2k-3k" → min_price = 2000, max_price = 3000
+
+ABBREVIATION CONVERSION (IMPORTANT):
+- "k" or "K" suffix means thousands (multiply by 1000)
+- "2k" = 2 × 1000 = 2000
+- "3.5k" = 3.5 × 1000 = 3500
+- "1k" = 1000
+- "10k" = 10000
+- Always convert "k" notation to full number before using
+
+RANGE CONNECTORS:
+- "between X to Y" works (example: "between 2k to 3k")
+- "between X and Y" works (example: "between 2k and 3k")
+- "X to Y" works (example: "2k to 3k")
+- "X and Y" works (example: "2k and 3k")
+- "X-Y" works (example: "2k-3k")
+- All are equivalent
+
+WORD-BASED PRICE LEVELS:
 - "cheap", "budget" → max_price = 2000
 - "affordable" → max_price = 2500
 - "expensive" → min_price = 5000
@@ -1461,6 +1484,57 @@ Output:
     "category": "shoes",
     "min_price": null,
     "max_price": null,
+    "specifications": []
+  },
+  "sort": {
+    "field": null,
+    "order": null
+  }
+}
+
+Input: "shoes under 2k"
+Output:
+{
+  "query": "shoes",
+  "filters": {
+    "color": null,
+    "category": null,
+    "min_price": null,
+    "max_price": 2000,
+    "specifications": []
+  },
+  "sort": {
+    "field": null,
+    "order": null
+  }
+}
+
+Input: "blue headphones between 3.5k to 5k"
+Output:
+{
+  "query": "headphones",
+  "filters": {
+    "color": "Blue",
+    "category": null,
+    "min_price": 3500,
+    "max_price": 5000,
+    "specifications": []
+  },
+  "sort": {
+    "field": null,
+    "order": null
+  }
+}
+
+Input: "kapda between 2k and 3k"
+Output:
+{
+  "query": "kapda",
+  "filters": {
+    "color": null,
+    "category": null,
+    "min_price": 2000,
+    "max_price": 3000,
     "specifications": []
   },
   "sort": {
